@@ -98,10 +98,8 @@ def start(m):
 	markup = types.ReplyKeyboardMarkup()
 	add_words_btn = types.KeyboardButton(s.add_words)
 	remove_words_btn = types.KeyboardButton(s.remove_words)
-	# my_words_btn = types.KeyboardButton(s.my_words)
 	markup.row(add_words_btn)
 	markup.row(remove_words_btn)
-	markup.row(my_words_btn)
 	bot.send_message(sid(m), s.manual, reply_markup = markup, parse_mode = "Markdown")
 
 @bot.message_handler(func=lambda x: x.text == s.add_words)
@@ -112,11 +110,10 @@ def new_words(m):
 	bot.send_message(sid(m), s.type_new_words)
 
 @bot.message_handler(func=lambda x: x.text == s.remove_words)
-def new_words(m):
+def remove_words(m):
 	u = User.cog(m)
-	u.state = s.remove
+	u.state = ''
 	u.save()
-
 	words = (Word
 				.select(Word)
 				.join(WordToUser, on=(Word.id == WordToUser.word_id))
@@ -129,11 +126,18 @@ def new_words(m):
 		callback_button = types.InlineKeyboardButton(text=w['word'], callback_data=str("remove {}".format(w['id'])))
 		keyboard.add(callback_button)
 	bot.send_message(sid(m), s.select_removing_words, reply_markup = keyboard)
+
+@bot.message_handler(func=lambda x: x.text == s.my_words)
+def my_words(m):
+	print(s.my_words)
 	
 @bot.callback_query_handler(func=lambda call: call.data.split(" ")[0] == "remove")
 def remove_word(c):
-	wtu = WordToUser.get(user_id = cid(c), word_id = int(c.data.split(" ")[1]))
-	wtu.delete_instance()
+	try:
+		wtu = WordToUser.get(user_id = cid(c), word_id = int(c.data.split(" ")[1]))
+		wtu.delete_instance()
+	except Exception as e:
+		print(e)
 	words = (Word
 				.select(Word)
 				.join(WordToUser, on=(Word.id == WordToUser.word_id))
@@ -168,21 +172,11 @@ def reply(m):
 				WordToUser.create(user_id = u.user_id, word_id = word.id)
 			except Exception as e:
 				print(e)
-
 		u.state = ''
 		u.save()
 
 	elif u.state == s.remove:
-		words = (Word
-			.select(Word)
-			.join(
-				Word,
-				on=(Word.id == WordToUser.user_id)
-				)
-			.where(WordToUser.user_id == sid(m))
-			)
-		for w in words:
-			print(w)
+		print("error")
 	else:
 		msg = re.sub('\W+', ' ', m.text)
 		msg = re.sub('\s+', ' ', msg.strip())
@@ -228,3 +222,11 @@ def reply(m):
 
 if __name__ == '__main__':
 	bot.polling(none_stop=True)
+
+# 
+	# 11062.bankruptcy_parser	(05.09.2017 17:08:32)	(Detached)
+	# 24258.parse_app_ngrok	(03.09.2017 21:10:36)	(Detached)
+	# 16724.zaebal_pinit_bot	(03.09.2017 17:03:22)	(Detached)
+	# 14792.parse_app	(03.09.2017 16:42:15)	(Attached)
+	# 16215.Django-Blog	(29.08.2017 10:06:18)	(Detached)
+# 
