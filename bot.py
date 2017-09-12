@@ -9,6 +9,14 @@ from peewee import *
 from playhouse.sqlite_ext import *
 import strings as s
 
+from multiprocessing import Process
+from time import sleep
+
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+
+
+
 # README
 #
 # Shortcuts:
@@ -70,6 +78,21 @@ class WordToUser(BaseModel):
 	class Meta:
 		primary_key = CompositeKey('user_id', 'word_id')
 
+class ChatToUser(BaseModel):
+	user_id = IntegerField()
+	chat_id = IntegerField()
+	chat_type = TextField(null = True)
+
+	class Meta:
+		primary_key = CompositeKey('user_id', 'chat_id')
+
+class Chat(BaseModel):
+	chat_id = IntegerField(unique = True)
+	chat_name = TextField()
+	joined = BooleanField(default = False)
+
+
+
 
 
 def sid(m):
@@ -90,6 +113,8 @@ def init(m):
 	Word.create_table(fail_silently = True)
 	User.create_table(fail_silently = True)
 	WordToUser.create_table(fail_silently = True)
+	Chat.create_table(fail_silently = True)
+	ChatToUser.create_table(fail_silently = True)
 
 
 @bot.message_handler(commands = ['start'])
@@ -216,7 +241,22 @@ def reply(m):
 
 
 
+class Watcher:
+	def __call__(self):
+		options = webdriver.ChromeOptions()
+		options.add_argument("--start-maximized")
+		driver = webdriver.Chrome("./chromedriver/chromedriver", chrome_options=options)
+		url = "https://web.telegram.org"
+		driver.get(url)
 
+		phone_number = driver.get_element_by_name("phone_number")
+
+
+
+
+watcher = Watcher()
+p1 = Process(target = watcher)
+# p1.start()
 
 
 
@@ -224,9 +264,13 @@ if __name__ == '__main__':
 	bot.polling(none_stop=True)
 
 # 
-	# 11062.bankruptcy_parser	(05.09.2017 17:08:32)	(Detached)
-	# 24258.parse_app_ngrok	(03.09.2017 21:10:36)	(Detached)
-	# 16724.zaebal_pinit_bot	(03.09.2017 17:03:22)	(Detached)
-	# 14792.parse_app	(03.09.2017 16:42:15)	(Attached)
-	# 16215.Django-Blog	(29.08.2017 10:06:18)	(Detached)
+# 11062.bankruptcy_parser	(05.09.2017 17:08:32)	(Detached)
+# 24258.parse_app_ngrok	(03.09.2017 21:10:36)	(Detached)
+# 16724.zaebal_pinit_bot	(03.09.2017 17:03:22)	(Detached)
+# 14792.parse_app	(03.09.2017 16:42:15)	(Attached)
+# 16215.Django-Blog	(29.08.2017 10:06:18)	(Detached)
 # 
+
+
+
+# ============ эмуляция юзера
