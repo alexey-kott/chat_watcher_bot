@@ -1,11 +1,15 @@
 # кнопки
 add_words = "Добавить слова"
 remove_words = "Удалить слова"
+add_chats = "Добавить чаты"
+remove_chats = "Удалить чаты"
 my_words = "Мои слова"
 
 # состояния
-new = "new_words"
+new_words = "new_words"
 remove = "remove_words"
+new_chats = "new_chats"
+type_code = "type_code"
 
 
 # сообщения
@@ -18,3 +22,5 @@ manual = ''' Для отслеживания слова нужно нажать 
 
 type_new_words = "Введите новые слова для отслеживания"
 select_removing_words = "Выберите слова для удаления"
+type_new_chats = "Введите новые чаты для отслеживания (адрес каждого нового чата должен начинаться с @)"
+select_removing_chats = "Выберите чаты для удаления"

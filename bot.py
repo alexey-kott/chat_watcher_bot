@@ -120,17 +120,19 @@ def init(m):
 @bot.message_handler(commands = ['start'])
 def start(m):
 	u = User.cog(m)
-	markup = types.ReplyKeyboardMarkup()
+	markup = types.ReplyKeyboardMarkup(resize_keyboard = True)
 	add_words_btn = types.KeyboardButton(s.add_words)
 	remove_words_btn = types.KeyboardButton(s.remove_words)
-	markup.row(add_words_btn)
-	markup.row(remove_words_btn)
+	add_chats_btn = types.KeyboardButton(s.add_chats)
+	remove_chats_btn = types.KeyboardButton(s.remove_chats)
+	markup.row(add_words_btn, remove_words_btn)
+	markup.row(add_chats_btn, remove_chats_btn)
 	bot.send_message(sid(m), s.manual, reply_markup = markup, parse_mode = "Markdown")
 
 @bot.message_handler(func=lambda x: x.text == s.add_words)
 def new_words(m):
 	u = User.cog(m)
-	u.state = s.new
+	u.state = s.new_words
 	u.save()
 	bot.send_message(sid(m), s.type_new_words)
 
@@ -151,6 +153,13 @@ def remove_words(m):
 		callback_button = types.InlineKeyboardButton(text=w['word'], callback_data=str("remove {}".format(w['id'])))
 		keyboard.add(callback_button)
 	bot.send_message(sid(m), s.select_removing_words, reply_markup = keyboard)
+
+@bot.message_handler(func=lambda x: x.text == s.add_chats)
+def new_chats(m):
+	u = User.cog(m)
+	u.state = s.new_chats
+	u.save()
+	bot.send_message(sid(m), s.type_new_chats)
 
 @bot.message_handler(func=lambda x: x.text == s.my_words)
 def my_words(m):
@@ -183,7 +192,7 @@ def reply(m):
 		u = User.cog(m)
 	except:
 		return False
-	if u.state == s.new:
+	if u.state == s.new_words:
 		msg = re.sub('\W+', ' ', m.text)
 		words = [w.lower() for w in msg.split(' ') if len(w) > 2]
 		words = list(set(words))
@@ -202,6 +211,25 @@ def reply(m):
 
 	elif u.state == s.remove:
 		print("error")
+
+	elif u.state == s.new_chats:
+		print("ds")
+		msg = re.sub('@\w+', ' ', m.text)
+		chats = [chat.lower() for chat in msg.split(' ') if len(chat) > 2]
+		chats = list(set(words))
+		for w in words:
+			word = Word.cog(word = w)
+			FTSEntry.create(
+				entry_id = word.id,
+				content = word.word
+				)
+			try:
+				WordToUser.create(user_id = u.user_id, word_id = word.id)
+			except Exception as e:
+				print(e)
+		u.state = ''
+		u.save()
+
 	else:
 		msg = re.sub('\W+', ' ', m.text)
 		msg = re.sub('\s+', ' ', msg.strip())
@@ -248,15 +276,29 @@ class Watcher:
 		driver = webdriver.Chrome("./chromedriver/chromedriver", chrome_options=options)
 		url = "https://web.telegram.org"
 		driver.get(url)
+		sleep(1)
+		phone_country = driver.find_element_by_name("phone_country")
+		phone_country.send_keys(Keys.CONTROL + "a")
+		phone_country.send_keys("+7")
+		phone_number = driver.find_element_by_name("phone_number")
+		phone_number.send_keys("9778486184")
+		phone_number.send_keys(Keys.ENTER)
 
-		phone_number = driver.get_element_by_name("phone_number")
+		driver.find_element_by_class_name("btn-md-primary").send_keys(Keys.ENTER)
+		bot.send_message(328241232, "Type the code")
+
+		# while True:
+		# 	for chat in Chat.select():
+		# 		print(chat.chat_name)
+
+		# 		sleep(0.5)
 
 
 
 
 watcher = Watcher()
 p1 = Process(target = watcher)
-# p1.start()
+p1.start()
 
 
 
