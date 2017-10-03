@@ -296,9 +296,9 @@ class Watcher:
 
 
 
-watcher = Watcher()
-p1 = Process(target = watcher)
-p1.start()
+# watcher = Watcher()
+# p1 = Process(target = watcher)
+# p1.start()
 
 
 
