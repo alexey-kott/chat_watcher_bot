@@ -153,9 +153,7 @@ def get_sender(update):
 
 
 def check_msg(m):
-	# print(m)
-	msg = re.sub('\W+', ' ', m)
-	# print(msg)
+	msg = re.sub('\W+\d+', ' ', m)
 	msg = re.sub('\s+', ' ', msg.strip())
 	words = [w.lower() for w in msg.split(' ')]
 	words = list(set(words))
@@ -168,7 +166,6 @@ def check_msg(m):
 		.where(FTSEntry.match(' OR '.join(words)))
 		.dicts()
 		)
-	listeners = dict() # юзеры, которые подписались на это слово
 	result = [q for q in query]
 	return len(result)
 
@@ -244,7 +241,12 @@ def new_words(m):
 	u = User.cog(m)
 	u.state = s.new_words
 	u.save()
-	bot.send_message(sid(m), s.type_new_words)
+	keyboard = types.ReplyKeyboardMarkup(resize_keyboard = True)
+	if client.is_user_authorized():
+		add_words_btn = types.KeyboardButton(s.add_words)
+		remove_words_btn = types.KeyboardButton(s.remove_words)
+		keyboard.row(add_words_btn, remove_words_btn)
+	bot.send_message(sid(m), s.type_new_words, reply_markup = keyboard)
 
 @bot.message_handler(func=lambda x: x.text == s.remove_words)
 def remove_words(m):
@@ -308,8 +310,15 @@ def action(m):
 		except Exception as e:
 			print(e)
 			print(m)
+			keyboard = types.ReplyKeyboardMarkup(resize_keyboard = True)
+			if client.is_user_authorized():
+				add_words_btn = types.KeyboardButton(s.add_words)
+				remove_words_btn = types.KeyboardButton(s.remove_words)
+				keyboard.row(add_words_btn, remove_words_btn)
+			bot.send_message(uid(m), s.select_action, reply_markup = keyboard)
 	except Exception as e:
 		print(e)
+
 
 
 
