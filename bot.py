@@ -1,123 +1,100 @@
 #!/usr/bin/python3
-# bot
+from time import sleep
+import sys
+from multiprocessing import Process
+import traceback
+
 import telebot
 from telebot import types
 import sqlite3 as sqlite
 import re
 from peewee import *
 from playhouse.sqlite_ext import *
-
 # telethon
 from telethon import TelegramClient
 from telethon.tl.functions.contacts import ResolveUsernameRequest
-from telethon.tl.types import UpdateShortMessage, UpdateNewChannelMessage, PeerUser, PeerChannel
+from telethon.tl.functions.messages import GetDialogsRequest, ForwardMessagesRequest
+from telethon.tl.types import UpdateShortMessage, UpdateNewChannelMessage, PeerUser, PeerChannel, InputPeerSelf
 
 
 import strings as s
-from time import sleep
-import sys
+
 from config import *
-from multiprocessing import Process
-import functions as f
-import traceback
-
-
-
-
-# README
-#
-# Shortcuts:
-#	sid 	= sender chat id
-#	m 		= message
-#	cog 	= create_or_get
+from functions import *
+from models import BaseModel, FTSEntry, Word, User, Routing
 
 
 bot = telebot.TeleBot(bot_token) # bot init
 bot_id = int(bot_token.split(':')[0])
 
-db = SqliteExtDatabase('bot.db', threadlocals=True) # DB
+clients = init_clients()
 
-sid = lambda m: m.chat.id # лямбды для определения адреса ответа
-uid = lambda m: m.from_user.id
-cid = lambda c: c.message.chat.id
-check_owner = lambda m: uid(m) == owner
 
-owner = 5844335 # бот для единственного пользователя, так что всех остальных шлём лесом 
+# db = SqliteExtDatabase('bot.db', threadlocals=True) # DB
+
+# owner = 5844335 # бот для единственного пользователя, так что всех остальных шлём лесом 
 # owner = 328241232
 # owner = 450968679
 # owner = 273167770 # Денис Давыдов
 
-client = TelegramClient("u{}".format(owner), api_id, api_hash, update_workers = 4)
-client.connect()
+# client = TelegramClient("u{}".format(owner), api_id, api_hash, update_workers = 4)
+# client.connect()
 # client.sign_in(phone=phone)
 # code = int(input())
 # me = client.sign_in(code=code)  # Put whatever code you received here.
 # exit()
 
-class BaseModel(Model):
-	class Meta:
-		database = db
 
 
-class FTSEntry(FTSModel):
-	entry_id = IntegerField(unique = True)
-	content = TextField()
-
-	class Meta:
-		database = db
-
-class Word(BaseModel):
-	word = TextField(unique = True)
-
-	def cog(word):
-		try:
-			with db.atomic():
-				return Word.create(word = word)
-		except:
-			return Word.get(word = word)
-
-class User(BaseModel):
-	user_id 	= IntegerField(unique = True)
-	username 	= TextField()
-	first_name 	= TextField()
-	last_name 	= TextField(null = True)
-	phone		= IntegerField(null = True)
-	state 		= TextField(null = True)
-
-	def cog(m):
-		user_id 	= uid(m)
-		username 	= m.from_user.username
-		first_name 	= m.from_user.first_name
-		last_name 	= m.from_user.last_name
-
-		try:
-			with db.atomic():
-				return User.create(user_id = user_id, username = username, first_name = first_name, last_name = last_name)
-		except:
-			return User.get(user_id = user_id)
-			
-class Routing(BaseModel):
-	state 		= TextField()
-	decision 	= TextField() # соответствует либо атрибуту data в инлайн кнопках, 
-							  # либо специальному значению text, которое соответствует любому текстовому сообщению
-	action		= TextField()
-
-	class Meta:
-		primary_key = CompositeKey('state', 'decision')
 
 
 def update_handler(update):
-	# print(get_text(update))
-	sender = get_sender(update)
-	if sender is False:
-		# print(update)
+	# # print(get_text(update))
+	# sender = get_sender(update)
+	# if sender is False:
+	# 	# print(update)
+	# 	return
+
+	# if sender.id == bot_id:
+	# 	return False
+
+	# print(update)
+	print(update)
+	return
+	try:
+		message = update.message
+		messages = []
+		if isinstance(update, UpdateShortMessage):
+			sender = client.get_entity(PeerUser(update.user_id))
+			messages.append(update.id)
+		elif isinstance(update, UpdateNewChannelMessage):
+			sender = client.get_entity(PeerChannel(update.message.to_id.channel_id))
+			# print(update.message.id)
+			messages.append(update.message.id)
+		elif isinstance(update, UpdateEditChannelMessage):
+			pass
+		else:
+			# print(type(update))
+			# print(update)
+			return False
+	except Exception as e:
+		# print(e)
 		return
 
-	if sender.id == bot_id:
-		return False
-
 	if check_msg(get_text(update)):
-		bot.send_message(owner, s.forward.format(f.get_full_user_name(sender), get_text(update)))
+		# bot.send_message(owner, s.forward.format(f.get_full_user_name(sender), get_text(update)))
+		try:
+			client(ForwardMessagesRequest(
+			    from_peer=sender,  # who sent these messages?
+			    id=messages,  # which are the messages?
+			    to_peer=InputPeerSelf() # who are we forwarding them to?
+			))
+			print("FORWARD")
+			print(get_text(update))
+		except Exception as e:
+			print("EXCEPTION")
+			print(get_text(update))
+			print(e)
 
 
 # FUNCTIONS
@@ -125,20 +102,21 @@ def update_handler(update):
 def auth(u, m):
 	u.state = ''
 	u.save()
-	code = m.text
-	client.sign_in(code=code)
-	if client.is_user_authorized():
-		client.add_update_handler(update_handler)
+	code = m.text # TODO: дописать проверку на цифры
+	cl = clients.get(u.sname)
+	cl.sign_in(code = code)
+
+	if cl.is_user_authorized():
+		print("AUTH SUCCESS")
+		bot.send_message(uid(m), s.manual, reply_markup = add_and_remove_keyboard())
 	else:
-		bot.send_message(u.user_id, "Ошибка.")
-		reauth()
+		print("AUTH FAILED")
+		bot.send_message(uid(m), "Ошибка.")
+		# reauth()
 
 
-def get_text(update):
-	if isinstance(update, UpdateShortMessage):
-		return update.message
-	elif isinstance(update, UpdateNewChannelMessage):
-		return update.message.message
+
+
 
 def get_sender(update):
 	sender = False
@@ -153,7 +131,7 @@ def get_sender(update):
 
 
 def check_msg(m):
-	msg = re.sub('\W+\d+', ' ', m)
+	msg = re.sub('\W+|\d+', ' ', m)
 	msg = re.sub('\s+', ' ', msg.strip())
 	words = [w.lower() for w in msg.split(' ')]
 	words = list(set(words))
@@ -198,7 +176,8 @@ def init(m):
 
 @bot.message_handler(commands = ['is_auth'])
 def is_auth(m):
-	if client.is_user_authorized():
+	u = User.cog(m)
+	if clients[u.sname].is_user_authorized():
 		bot.send_message(uid(m), "Auth")
 	else:
 		bot.send_message(uid(m), "Not auth")
@@ -209,20 +188,18 @@ def is_auth(m):
 
 @bot.message_handler(commands = ['start'])
 def start(m):
-	if not check_owner(m):
-		return False
 	u = User.cog(m)
-	keyboard = types.ReplyKeyboardMarkup(resize_keyboard = True)
-	if client.is_user_authorized():
-		add_words_btn = types.KeyboardButton(s.add_words)
-		remove_words_btn = types.KeyboardButton(s.remove_words)
-		keyboard.row(add_words_btn, remove_words_btn)
-		bot.send_message(uid(m), s.manual, reply_markup = keyboard, parse_mode = "Markdown")
+	clients[u.sname] = TelegramClient(u.sname, api_id, api_hash, update_workers=4)
+	clients[u.sname].connect()
+	
+	if clients[u.sname].is_user_authorized():
+		bot.send_message(uid(m), s.manual, reply_markup = add_and_remove_keyboard(), parse_mode = "Markdown")
 	else:
+		keyboard = types.ReplyKeyboardMarkup(resize_keyboard = True)
 		share_contact_btn = types.KeyboardButton(s.share_contact, request_contact = True)
 		keyboard.row(share_contact_btn)
 		bot.send_message(uid(m), s.need_auth, reply_markup = keyboard, parse_mode = "Markdown")
-		bot.send_message(uid(m), s.manual, reply_markup = keyboard, parse_mode = "Markdown")
+		# bot.send_message(uid(m), s.manual, reply_markup = keyboard, parse_mode = "Markdown")
 
 def reauth():
 	try:
@@ -287,8 +264,9 @@ def contact(m):
 	u.state = s.send_contact
 	u.phone = m.contact.phone_number
 	u.save()
-	# client.connect()
-	client.sign_in(phone=u.phone)
+	if clients[u.sname].is_user_authorized():
+		return
+	clients[u.sname].sign_in(phone=u.phone)
 	keyboard = types.ReplyKeyboardMarkup(resize_keyboard = True)
 	add_words_btn = types.KeyboardButton(s.add_words)
 	remove_words_btn = types.KeyboardButton(s.remove_words)
@@ -300,23 +278,23 @@ def contact(m):
 
 @bot.message_handler(content_types = ['text'])
 def action(m):
-	if not check_owner(m):
-		return False
 	u = User.cog(m)
 	try:
 		r = Routing.get(state = u.state, decision = 'text')
 		try: # на случай если action не определён в таблице роутинга
 			eval(r.action)(u = u, m = m)
 		except Exception as e:
-			print(e)
-			print(m)
+			# print(e)
+			# print(m)
 			keyboard = types.ReplyKeyboardMarkup(resize_keyboard = True)
-			if client.is_user_authorized():
+			if clients[u.sname].is_user_authorized():
+				print("CLIENT AUTH")
 				add_words_btn = types.KeyboardButton(s.add_words)
 				remove_words_btn = types.KeyboardButton(s.remove_words)
 				keyboard.row(add_words_btn, remove_words_btn)
 			bot.send_message(uid(m), s.select_action, reply_markup = keyboard)
 	except Exception as e:
+		pass
 		print(e)
 
 
@@ -328,9 +306,9 @@ def action(m):
 
 
 if __name__ == '__main__':
-	if client.is_user_authorized():
-		client.add_update_handler(update_handler)
-	else:
-		reauth()
+	# if client.is_user_authorized():
+	# 	client.add_update_handler(update_handler)
+	# else:
+	# 	reauth()
 
 	bot.polling(none_stop=True)
