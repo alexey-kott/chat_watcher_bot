@@ -3,7 +3,7 @@ from playhouse.sqlite_ext import *
 
 from functions import *
 
-db = SqliteExtDatabase('bot.db', threadlocals=True) # DB
+db = SqliteExtDatabase('bot.db') # DB
 
 sid = lambda m: m.chat.id # лямбды для определения адреса ответа
 uid = lambda m: m.from_user.id

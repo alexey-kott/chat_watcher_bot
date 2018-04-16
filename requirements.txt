@@ -1,0 +1,12 @@
+certifi==2017.11.5
+chardet==3.0.4
+idna==2.6
+peewee==2.10.2
+pyaes==1.6.1
+pyasn1==0.4.2
+pyTelegramBotAPI==3.5.1
+requests==2.18.4
+rsa==3.4.2
+six==1.11.0
+Telethon==0.17.1
+urllib3==1.22

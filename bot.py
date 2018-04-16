@@ -25,7 +25,8 @@ from models import BaseModel, FTSEntry, Word, User, Routing
 bot = telebot.TeleBot(bot_token)  # bot init
 bot_id = int(bot_token.split(':')[0])
 
-clients = init_clients()
+# clients = init_clients()
+# exit()
 
 
 # db = SqliteExtDatabase('bot.db', threadlocals=True) # DB

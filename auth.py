@@ -4,9 +4,10 @@ from telethon import TelegramClient
 
 from config import *
 
-# owner = 5844335
-owner = 328241232
-phone = "79778486184"
+owner = 5844335
+# owner = 328241232
+# phone = "79778486184"
+phone = '79047675120'
 
 
 client = TelegramClient("u{}".format(owner), api_id, api_hash, update_workers = 4)
@@ -18,9 +19,7 @@ if client.is_user_authorized():
 # exit()
 client.sign_in(phone=phone)
 code = int(input())
-print(type(code))
-print(len(code))
-# me = client.sign_in(code=code)  # Put whatever code you received here.
+me = client.sign_in(code=code)  # Put whatever code you received here.
 
 exit()
 
